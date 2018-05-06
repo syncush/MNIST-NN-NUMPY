@@ -13,16 +13,42 @@ class Function(object):
     def calc(self, x):
         raise NotImplemented
 
-    def dcalc(self, x, y):
+    def dcalc(self, x, y, y_hat, weights, curr_layer):
         raise NotImplemented
 
 
-class Sigmoid(Function):
-    def calc(self, x):
-        return (lambda x: 1 / (1 + np.exp(-x)))(x)
+class Softmax(Function):
+    def calc(self, input):
+        W, x, b = input
+        eval = np.dot(x, W) + b
+        softmax_vec = np.exp(eval) / np.sum(np.exp(eval))
+        return softmax_vec
 
-    def dcalc(self, x, y):
-        return self.calc(x)*(1 - self.calc(x))
+    def dcalc(self, x, y, y_hat, weights, curr_layer):
+        dB = y_hat.copy()
+        dB[y] -= 1
+
+        dW = np.dot(x, y_hat)
+        dW[:, y] -= x
+
+        return dW, dB
+
+
+class Relu(Function):
+    def calc(self, input):
+        value = input
+        value[value < 0] = 0
+        return value
+
+    def dcalc(self, x, y, y_hat, weights, curr_layer, input):
+        h_bigger_zero = np.dot()
+        h_bigger_zero[h_bigger_zero <= 0] = 0
+        h_bigger_zero[h_bigger_zero > 0] = 1
+
+        temp_d = np.dot(weights[curr_layer + 1][:, y], y_hat)
+        temp_d -= weights[curr_layer + 1][:, y]
+        temp_d *= h_bigger_zero
+        temp_d np.dot(x, temp_d)
 
 
 class TwoLayeredNN(object):
@@ -37,7 +63,7 @@ class TwoLayeredNN(object):
             self.layer_weights_and_b_pairs.append((np.random.rand(x_size, y_size), np.random.rand(1, y_size)))
 
     def __forward_in_net__(self, train_example):
-        input , tag = train_example
+        input, tag = train_example
         zs = []
         hs = []
         input_temp = input
@@ -47,21 +73,33 @@ class TwoLayeredNN(object):
             h_i_temp = function_activation.calc(z_i_temp)
             zs.append(z_i_temp)
             hs.append(h_i_temp)
-        return zs, hs, hs[-1]
+        return zs, hs, hs[-1], train_example
 
     def __backprop_in_net__(self, forward_net_info):
-        zs, hs, model_output = forward_net_info
-        return 0, 0
+        zs, hs, y_hat, train = forward_net_info
+        input, y = train
+
+        dB_softmax = y_hat.copy()
+        dB_softmax[y] -= 1
+        dW_softmax = np.dot(hs[0], y_hat)
+        dW_softmax[:, y] -= hs[0]
+
+        dW_relu =
+        dB_relu =
+
+
+
+        return [dW_softmax, dW_relu], [dB_softmax, dB_relu]
 
     def learn(self, training_set, batch_size=1):
         for _ in self.epocs:
             for batch in list(chunks(training_set, batch_size)):
-                sum_weight_change, sum_bias_change = (0, 0)
+                sum_weight_change, sum_bias_change = ([], [])
                 for train_example in batch:
                     zs, hs, model_output = self.__forward_in_net__(train_example)
                     dW, dB = self.__backprop_in_net__((zs, hs, model_output))
-                    sum_weight_change += dW
-                    sum_bias_change += dB
+                    sum_weight_change.append(dW)
+                    sum_bias_change.append(dB)
 
     def compare_against_test_set(self, test_set):
         num_right = 0
