@@ -81,11 +81,23 @@ class TwoLayeredNN(object):
 
         dB_softmax = y_hat.copy()
         dB_softmax[y] -= 1
+
         dW_softmax = np.dot(hs[0], y_hat)
         dW_softmax[:, y] -= hs[0]
 
-        dW_relu =
-        dB_relu =
+        W2,b2 = self.layer_weights_and_b_pairs[1]
+        Wx_b = z[0].copy()
+        Wx_b[Wx_b > 0] = 1
+        Wx_b[Wx_b < 0] = 0
+        dW_relu = np.dot(W2, y_hat)
+        #redce calculation
+        dB_relu = dW_relu.copy()
+        dW_relu[:, y] -= W2[:, y]
+        dW_relu = dW_relu * Wx_b * input
+
+
+        dB_relu[:, y] -= W2[:, y]
+        dB_relu = dB_relu * Wx_b
 
 
 
