@@ -112,6 +112,7 @@ class TwoLayeredNN(object):
     def learn(self, training_set, test_set, batch_size=1,  epocs=10, ):
         string_header = '|\t{0}\t|\t{1}\t|\t{2}\t|\t{3}\t|\t{4}\t|'
         string_underline = len(string_header) * '_' * 3
+        print(string_underline)
         string_table_row = '|\t#{0}\t|\t{1}\t|\t{2}\t|\t{3}%\t|\t{4} seconds\t|'
         print(string_header.format('Epoc number', 'total loss', 'test set loss', 'accuracy', 'time'))
         print(string_underline)
@@ -153,7 +154,7 @@ class TwoLayeredNN(object):
 
 
 if __name__ == '__main__':
-    learn_rate, hidden_layer_size, function, num_epocs, mini_batch_size = 0.1, 16, Relu().toString(), 10, 1
+    learn_rate, hidden_layer_size, function, num_epocs, mini_batch_size = 0.06, 128, TanH(), 10, 1
     print("Started loading data")
     train_x = np.loadtxt("train_x") / 255.0
     train_y = np.loadtxt("train_y", dtype=np.int)
@@ -164,9 +165,10 @@ if __name__ == '__main__':
     proper_test_set = zip(test_x, test_y)
     np.random.shuffle(proper_data_set)
     real_train_80, validation_20 = proper_data_set[:int(0.8 * len(proper_data_set))], proper_data_set[int(0.8 * len(proper_data_set)):]
-    network = TwoLayeredNN(learning_rate=0.1,
+    network = TwoLayeredNN(learning_rate=learn_rate,
                            num_classes=10,
-                           layers_func={"layers_func": [TanH(), Softmax()],
-                                        "sizes": [(784, 28), (28, 10)]})
-    print("Hyper parameter ares:")
-    network.learn(real_train_80, test_set=validation_20)
+                           layers_func={"layers_func": [function, Softmax()],
+                                        "sizes": [(784, hidden_layer_size), (hidden_layer_size, 10)]})
+    string_info = "Hyper parameter ares: learning rate = {0}, hidden layer size = {1}, function name = {2}, # epocs: {3}, batch size = {4}"
+    print(string_info.format(learn_rate, hidden_layer_size, function.toString(), num_epocs, mini_batch_size))
+    network.learn(real_train_80, test_set=validation_20, batch_size=mini_batch_size, epocs=num_epocs)
