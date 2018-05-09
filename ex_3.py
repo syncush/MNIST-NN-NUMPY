@@ -134,19 +134,12 @@ class TwoLayeredNN(object):
         for epoc_num in range(1, epocs):
             np.random.shuffle(training_set)
             for batch in list(chunks(training_set, batch_size)):
-                sum_weight_change_soft, sum_bias_change_soft, sum_weight_change_hid, sum_bias_change_hid = (0, 0, 0, 0)
+                sum_weight_change_soft, sum_bias_change_soft= (0, 0)
                 for train_example in batch:
                     zs, hs, y_hat, _ = self.__forward_in_net__(train_example)
                     dW, dB = self.__backprop_in_net__((zs, hs, y_hat, train_example))
-                    sum_bias_change_soft += dB[0]
-                    sum_bias_change_hid += dB[1]
-                    sum_weight_change_soft += dW[0]
-                    sum_weight_change_hid += dW[1]
-                sum_bias_change_soft /= len(batch)
-                sum_bias_change_hid /= len(batch)
-                sum_weight_change_soft /= len(batch)
-                sum_weight_change_hid /= len(batch)
-                self.__update__([sum_weight_change_soft, sum_weight_change_hid], [sum_bias_change_soft, sum_bias_change_hid])
+                    self.__update__(dW, dB)
+
             time1 = time.time()
             loss, accuracy = self.compare_against_test_set(test_set)
             time2 = time.time()
