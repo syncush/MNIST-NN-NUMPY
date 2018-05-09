@@ -1,14 +1,34 @@
 import time
-
 import numpy as np
-import math
-import pickle
 
 
 def chunks(l, n):
     """Yield successive n-sized chunks from l."""
     for i in range(0, len(l), n):
         yield l[i:i + n]
+
+
+class PrettyPrinter(object):
+    def __init__(self, seperator, hyper_parameters):
+        self.hyper = hyper_parameters
+        self.sep = seperator
+
+    def __wrap__(self, str):
+        print(self.sep * 100)
+        print(str)
+        print(self.sep * 100)
+
+    def print_header(self):
+        string_header = '|\t{0}\t|\t{1}\t|\t{2}\t|\t{3}\t|\t{4}\t|'
+        learn_rate, hidden_layer_size, function, num_epocs, mini_batch_size, shuffle = self.hyper
+        string_hyper = '\n\t'.join(['Hyper parameters are:', 'Learning rate: {0}', 'Hidden layer size: {1}', 'Function name: {2}', 'Number of epocs: {3}', 'Batch size: {4}', 'Shuffle every epoc: {5}'])
+        self.__wrap__(string_hyper.format(learn_rate, hidden_layer_size, function.toString(), num_epocs, mini_batch_size, str(shuffle)))
+        self.__wrap__(string_header.format('Epoc number', 'total loss', 'test set loss', 'accuracy', 'time'))
+
+    def print_table_row(self, x):
+        string_table_row = '|\t#{0}\t|\t{1}\t|\t{2}\t|\t{3}%\t|\t{4} seconds\t|'
+        epoc, total_loss, test_set_loss, accuracy, time = x
+        print(string_table_row.format(epoc, total_loss, test_set_loss, accuracy, time / 0.016667))
 
 
 class Function(object):
@@ -61,6 +81,7 @@ class TanH():
     def toString(self):
         return "TanH"
 
+
 def myRandom(size1, size2=None):
     t = 1 if size2 is None else size2
     eps = np.sqrt(6.0 / (size1 + t))
@@ -68,12 +89,12 @@ def myRandom(size1, size2=None):
 
 
 class TwoLayeredNN(object):
-    def __init__(self, layers_func, learning_rate, num_classes):
+    def __init__(self, layers_func, learning_rate, printer=None):
         self.eta = learning_rate
-        self.num_classes = num_classes
         self.function_layers = layers_func["layers_func"]
         self.num_of_layers = len(self.function_layers)
         self.layer_weights_and_b_pairs = []
+        self.printer = PrettyPrinter('*', (0, 0, "None", 0, 0)) if printer is None else printer
         for x_size, y_size in layers_func["sizes"]:
             self.layer_weights_and_b_pairs.append((myRandom(x_size, y_size), myRandom(y_size)))
 
@@ -109,26 +130,27 @@ class TwoLayeredNN(object):
         dlayer1_dW1 = np.outer(input, dlayer1_dW1)
         return [dW_softmax, dlayer1_dW1], [dB_softmax, dlayer1_dB1]
 
-    def learn(self, training_set, test_set, batch_size=1,  epocs=10, ):
-        string_header = '|\t{0}\t|\t{1}\t|\t{2}\t|\t{3}\t|\t{4}\t|'
-        string_underline = len(string_header) * '_' * 3
-        print(string_underline)
-        string_table_row = '|\t#{0}\t|\t{1}\t|\t{2}\t|\t{3}%\t|\t{4} seconds\t|'
-        print(string_header.format('Epoc number', 'total loss', 'test set loss', 'accuracy', 'time'))
-        print(string_underline)
+    def learn(self, training_set, test_set, batch_size=1,  epocs=10):
         for epoc_num in range(1, epocs):
+            np.random.shuffle(training_set)
             for batch in list(chunks(training_set, batch_size)):
-                sum_weight_change, sum_bias_change = ([], [])
+                sum_weight_change_soft, sum_bias_change_soft, sum_weight_change_hid, sum_bias_change_hid = (0, 0, 0, 0)
                 for train_example in batch:
                     zs, hs, y_hat, _ = self.__forward_in_net__(train_example)
                     dW, dB = self.__backprop_in_net__((zs, hs, y_hat, train_example))
-                    sum_weight_change.append(dW)
-                    sum_bias_change.append(dB)
-                    self.__update__(dW, dB)
+                    sum_bias_change_soft += dB[0]
+                    sum_bias_change_hid += dB[1]
+                    sum_weight_change_soft += dW[0]
+                    sum_weight_change_hid += dW[1]
+                sum_bias_change_soft /= len(batch)
+                sum_bias_change_hid /= len(batch)
+                sum_weight_change_soft /= len(batch)
+                sum_weight_change_hid /= len(batch)
+                self.__update__([sum_weight_change_soft, sum_weight_change_hid], [sum_bias_change_soft, sum_bias_change_hid])
             time1 = time.time()
             loss, accuracy = self.compare_against_test_set(test_set)
             time2 = time.time()
-            print(string_table_row.format(str(epoc_num), '0', loss, accuracy * 100, (time2-time1)*1000.0))
+            self.printer.print_table_row((str(epoc_num), 'Haim Homo', loss, accuracy * 100, time2 - time1))
 
     def __update__(self, dW, dB):
         W2, b2 = self.layer_weights_and_b_pairs[1]
@@ -154,21 +176,21 @@ class TwoLayeredNN(object):
 
 
 if __name__ == '__main__':
-    learn_rate, hidden_layer_size, function, num_epocs, mini_batch_size = 0.06, 128, TanH(), 10, 1
+    learn_rate, hidden_layer_size, function, num_epocs, mini_batch_size, shuffle_every_epoc = 0.01, 256, TanH(), 10, 1, True
+    printer = PrettyPrinter('*', (learn_rate, hidden_layer_size, function, num_epocs, mini_batch_size, shuffle_every_epoc))
     print("Started loading data")
     train_x = np.loadtxt("train_x") / 255.0
     train_y = np.loadtxt("train_y", dtype=np.int)
-    test_x = np.loadtxt("test_x") / 255.0
-    test_y = np.loadtxt("test.pred", dtype=np.int)
+    #test_x = np.loadtxt("test_x") / 255.0
+    #test_y = np.loadtxt("test.pred", dtype=np.int)
     print("Finished loading data")
     proper_data_set = zip(train_x, train_y)
-    proper_test_set = zip(test_x, test_y)
+    #proper_test_set = zip(test_x, test_y)
     np.random.shuffle(proper_data_set)
     real_train_80, validation_20 = proper_data_set[:int(0.8 * len(proper_data_set))], proper_data_set[int(0.8 * len(proper_data_set)):]
     network = TwoLayeredNN(learning_rate=learn_rate,
-                           num_classes=10,
+                           printer=printer,
                            layers_func={"layers_func": [function, Softmax()],
                                         "sizes": [(784, hidden_layer_size), (hidden_layer_size, 10)]})
-    string_info = "Hyper parameter ares: learning rate = {0}, hidden layer size = {1}, function name = {2}, # epocs: {3}, batch size = {4}"
-    print(string_info.format(learn_rate, hidden_layer_size, function.toString(), num_epocs, mini_batch_size))
+    printer.print_header()
     network.learn(real_train_80, test_set=validation_20, batch_size=mini_batch_size, epocs=num_epocs)
