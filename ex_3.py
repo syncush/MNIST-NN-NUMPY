@@ -82,6 +82,17 @@ class TanH():
         return "TanH"
 
 
+class Sigmoid():
+    def calc(self, input):
+        return 1.0 / (1.0 + np.exp(-input))
+
+    def dcalc(self, input):
+        return self.calc(input) * (1.0 - self.calc(input))
+
+    def toString(self):
+        return "Sigmoid"
+
+
 def myRandom(size1, size2=None):
     t = 1 if size2 is None else size2
     eps = np.sqrt(6.0 / (size1 + t))
@@ -134,7 +145,6 @@ class TwoLayeredNN(object):
         for epoc_num in range(1, epocs):
             np.random.shuffle(training_set)
             for batch in list(chunks(training_set, batch_size)):
-                sum_weight_change_soft, sum_bias_change_soft= (0, 0)
                 for train_example in batch:
                     zs, hs, y_hat, _ = self.__forward_in_net__(train_example)
                     dW, dB = self.__backprop_in_net__((zs, hs, y_hat, train_example))
@@ -167,15 +177,18 @@ class TwoLayeredNN(object):
         loss_np = np.array(loss)
         return loss_np.mean(), float(num_right) / len(test_set)
 
+    def predict(self, input):
+        _, _, y_hat, _ = self.__forward_in_net__((input, -1))
+        return np.argmax(y_hat)
+
 
 if __name__ == '__main__':
-    learn_rate, hidden_layer_size, function, num_epocs, mini_batch_size, shuffle_every_epoc = 0.01, 256, TanH(), 10, 1, True
+    learn_rate, hidden_layer_size, function, num_epocs, mini_batch_size, shuffle_every_epoc = 0.015, 450, Relu(), 12, 1, True
     printer = PrettyPrinter('*', (learn_rate, hidden_layer_size, function, num_epocs, mini_batch_size, shuffle_every_epoc))
     print("Started loading data")
     train_x = np.loadtxt("train_x") / 255.0
     train_y = np.loadtxt("train_y", dtype=np.int)
-    #test_x = np.loadtxt("test_x") / 255.0
-    #test_y = np.loadtxt("test.pred", dtype=np.int)
+    test_x = np.loadtxt("test_x") / 255.0
     print("Finished loading data")
     proper_data_set = zip(train_x, train_y)
     #proper_test_set = zip(test_x, test_y)
