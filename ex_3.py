@@ -164,6 +164,29 @@ class TwoLayeredNN(object):
         b2 = b2 - self.eta * dB[0]
         self.layer_weights_and_b_pairs = [(W1, b1), (W2, b2)]
 
+    def learn2(self, training_set, test_set, batch_size=1, epocs=10):
+        for epoc_num in range(1, epocs):
+            np.random.shuffle(training_set)
+            for batch in list(chunks(training_set, batch_size)):
+                for train_example in batch:
+                    zs, hs, y_hat, _ = self.__forward_in_net__(train_example)
+                    dW, dB = self.__backprop_in_net__((zs, hs, y_hat, train_example))
+                    self.__update2__(dW, dB, epoc_num)
+
+            time1 = time.time()
+            loss, accuracy = self.compare_against_test_set(test_set)
+            time2 = time.time()
+            self.printer.print_table_row((str(epoc_num), 'Haim Homo', loss, accuracy * 100, time2 - time1))
+
+    def __update2__(self, dW, dB, n):
+        W2, b2 = self.layer_weights_and_b_pairs[1]
+        W1, b1 = self.layer_weights_and_b_pairs[0]
+        W1 = W1 - self.eta[n - 1] * dW[1]
+        b1 = b1 - self.eta[n - 1] * dB[1]
+        W2 = W2 - self.eta[n - 1] * dW[0]
+        b2 = b2 - self.eta[n - 1] * dB[0]
+        self.layer_weights_and_b_pairs = [(W1, b1), (W2, b2)]
+
     def compare_against_test_set(self, test_set):
         num_right = 0
         loss = []
@@ -183,7 +206,8 @@ class TwoLayeredNN(object):
 
 
 if __name__ == '__main__':
-    learn_rate, hidden_layer_size, function, num_epocs, mini_batch_size, shuffle_every_epoc = 0.015, 450, Relu(), 12, 1, True
+    learn_rate, hidden_layer_size, function, num_epocs, mini_batch_size, shuffle_every_epoc = 0.005, 256, Relu(), 12, 1, True
+    learn_rate = (5 * [0.015]) + (5*[0.01]) + (2 * [0.0015])
     printer = PrettyPrinter('*', (learn_rate, hidden_layer_size, function, num_epocs, mini_batch_size, shuffle_every_epoc))
     print("Started loading data")
     train_x = np.loadtxt("train_x") / 255.0
@@ -199,4 +223,4 @@ if __name__ == '__main__':
                            layers_func={"layers_func": [function, Softmax()],
                                         "sizes": [(784, hidden_layer_size), (hidden_layer_size, 10)]})
     printer.print_header()
-    network.learn(real_train_80, test_set=validation_20, batch_size=mini_batch_size, epocs=num_epocs)
+    network.learn2(real_train_80, test_set=validation_20, batch_size=mini_batch_size, epocs=num_epocs)
