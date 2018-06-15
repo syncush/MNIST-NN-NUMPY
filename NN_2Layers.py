@@ -215,7 +215,6 @@ if __name__ == '__main__':
     test_x = np.loadtxt("test_x") / 255.0
     print("Finished loading data")
     proper_data_set = zip(train_x, train_y)
-    #proper_test_set = zip(test_x, test_y)
     np.random.shuffle(proper_data_set)
     real_train_80, validation_20 = proper_data_set[:int(0.8 * len(proper_data_set))], proper_data_set[int(0.8 * len(proper_data_set)):]
     network = TwoLayeredNN(learning_rate=learn_rate,
